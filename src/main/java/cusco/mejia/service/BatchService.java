@@ -8,6 +8,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import cusco.mejia.dto.BookDto;
+import cusco.mejia.http.RestClient;
 import cusco.mejia.repository.BookRepository;
 import io.quarkus.scheduler.Scheduled;
 import lombok.extern.slf4j.Slf4j;
@@ -19,11 +20,17 @@ public class BatchService {
     @Inject
     BookRepository bookRepository;
 
+    @Inject
+    RestClient restClient;
+
     
-    @Scheduled(every = "20s")
+    @Scheduled(every = "200s")
     public void process() {
         log.info("Processing...");
+        long start = System.currentTimeMillis();
         processBooks();
+        long end = System.currentTimeMillis();
+        log.info("TIME FINISHED PROCESS: {} ms", (end - start));
     }
 
     private void processBooks() {
@@ -33,7 +40,7 @@ public class BatchService {
         List<List<BookDto>> subLists = splitListInSublists(books);
         log.info("Total sublists size: {}", subLists.size());
         subLists.forEach(subList -> {
-            executorService.execute(new WorkerThread(subList, bookRepository));
+            executorService.execute(new WorkerThread(subList, bookRepository, restClient));
         });
         executorService.shutdown();
         while (!executorService.isTerminated()) {
